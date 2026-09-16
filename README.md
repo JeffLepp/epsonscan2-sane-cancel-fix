@@ -1,5 +1,11 @@
 # Epson Scan 2 first-call cancellation fix
 
+This continues the SANE `scanimage` cancellation work in
+[`f493dede`](https://gitlab.com/sane-project/backends/-/commit/f493dede5e93057e1ac447646b141fa4faaf710e):
+that change reports cancellation correctly after a forced second-signal abort;
+this repository fixes the Epson backend behavior that can make the forced abort
+necessary.
+
 Epson Scan 2 6.7.80 does not send the SDK cancel operation on the first
 `sane_cancel()` call during an active scan. The first call only sets
 `cancel_requested`; a second call is required to reach
