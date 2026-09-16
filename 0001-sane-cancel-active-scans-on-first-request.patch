@@ -1,0 +1,44 @@
+From eea447ab59c9ab2e9ce4a8fcc0614354cde2fb12 Mon Sep 17 00:00:00 2001
+From: Jefferson Kline <jeffersonkline@gmail.com>
+Date: Wed, 16 Sep 2026 11:34:54 -0700
+Subject: [PATCH] SaneWrapper: cancel active scans on first request
+
+The first sane_cancel call currently only records cancel_requested. Frontends make one cancellation call, so an acquisition blocked in the SDK can remain active until the process is killed.
+
+Capture whether an acquisition is active before clearing scan_ready, and initiate kSDIOperationTypeCancel on the first request. Keep later calls idempotent and preserve the completed-scan event drain.
+---
+ src/SaneWrapper/backend.cpp | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
+
+diff --git a/src/SaneWrapper/backend.cpp b/src/SaneWrapper/backend.cpp
+index a9b31e1..7eb1d7e 100755
+--- a/src/SaneWrapper/backend.cpp
++++ b/src/SaneWrapper/backend.cpp
+@@ -627,19 +627,21 @@ void
+ sane_cancel (SANE_Handle handle)
+ {
+   SANE_TRACE_LOG("--------------sane_cancel--------------");
+-  SANE_Status status = SANE_STATUS_GOOD;
+-  Epson_Scanner *s;
+-  s = (Epson_Scanner *) handle;
++  Epson_Scanner *s = (Epson_Scanner *) handle;
++  if (!s)
++  {
++    return;
++  }
++  bool cancel_active_scan = s->scan_ready && !s->scan_complete;
+   s->image_count = 0;
+   s->scan_ready = false;
+-  if(s->scan_complete == false){
++  if(cancel_active_scan){
+     if(s->cancel_requested == false){
+       s->cancel_requested = true;
+-    }else if(s->cancel_requested == true){
+       SANE_TRACE_LOG("Scan cancel terminated.");
+       s->hw->sv->SDIScannerDriver_DoScanJobPtr_(s->hw->sv->driver, kSDIOperationTypeCancel);
+     }
+-  }else {
++  }else if(s->scan_complete) {
+     s->hw->sv->SDIImage_CreatePtr_(&s->outImageData);
+     s->hw->sv->SDIScannerDriver_GetNextTransferEventPtr_(s->hw->sv->driver,
+                                            0,
