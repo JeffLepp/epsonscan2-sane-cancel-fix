@@ -16,9 +16,14 @@ This patch sends the SDK cancel operation on the first active request. Repeated
 calls remain idempotent, cancellation before acquisition remains a no-op, and
 the existing completed-scan cleanup is preserved.
 
+The complete driver change is the 14-line diff in
+[`0001-sane-cancel-active-scans-on-first-request.patch`](0001-sane-cancel-active-scans-on-first-request.patch).
+It applies to `src/SaneWrapper/backend.cpp` from Epson's published source; the
+full Epson package is not copied into this repository.
+
 ## Files
 
-- [`0001-sane-cancel-active-scans-on-first-request.patch`](0001-sane-cancel-active-scans-on-first-request.patch) — the backend change
+- [`0001-sane-cancel-active-scans-on-first-request.patch`](0001-sane-cancel-active-scans-on-first-request.patch) — the complete backend source change
 - [`cancel_contract_test.cpp`](cancel_contract_test.cpp) — regression coverage for active, repeated, pre-start, and completed cancellation
 - [`verify.sh`](verify.sh) — applies the patch to pristine 6.7.80 source and runs the test
 - [`evidence-summary.md`](evidence-summary.md) — reproduction, build, and hardware results
