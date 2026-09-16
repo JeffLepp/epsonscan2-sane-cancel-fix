@@ -1,4 +1,4 @@
-# Epson Scan 2 first-call cancellation fix
+# Epson Scan 2 SANE backend first-call cancellation fix
 
 This continues the SANE `scanimage` cancellation work in
 [`f493dede`](https://gitlab.com/sane-project/backends/-/commit/f493dede5e93057e1ac447646b141fa4faaf710e):
