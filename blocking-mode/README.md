@@ -1,28 +1,36 @@
-# Explicit blocking mode returns an error
+# SANE blocking I/O returns `SANE_STATUS_UNSUPPORTED`
 
-After starting a scan, an app can call `sane_set_io_mode(handle, SANE_FALSE)` to
-explicitly select blocking reads. The Epson backend uses that mode by default,
-but the call returns `SANE_STATUS_UNSUPPORTED`. An app that treats the error as
-fatal can give up on the scan. [SANE requires blocking requests to succeed during acquisition](https://sane-project.gitlab.io/standard/1.05/api.html#sane-set-io-mode).
+In Epson Scan 2 6.7.80.0-1 for Linux, `sane_set_io_mode(handle, SANE_FALSE)`
+returns `SANE_STATUS_UNSUPPORTED` during a scan. The backend already uses
+blocking reads, so a frontend asking for the mode it is already using gets an
+error. [SANE 1.05, section 4.3.12](https://sane-project.gitlab.io/standard/1.05/api.html#sane-set-io-mode)
 
-The [patch](0001-sane-accept-blocking-io-mode.patch) returns `SANE_STATUS_GOOD`
-for blocking requests and `SANE_STATUS_UNSUPPORTED` for nonblocking requests.
-The original function failed all three blocking requests in a five-request
-test. The patched function passed all five requests.
+The [patch](0001-sane-accept-blocking-io-mode.patch) changes the return value in
+`src/SaneWrapper/backend.cpp`. Blocking requests return `SANE_STATUS_GOOD`.
+Nonblocking requests return `SANE_STATUS_UNSUPPORTED`.
 
-## Run the test
+## Test results
 
-Extract the [Epson Scan 2 6.7.80.0-1 source](https://support.epson.net/linux/en/epsonscan2.php).
-With Python 3, Git, a C++ compiler, and SANE development headers installed, run
-this from the repo root.
+I reproduced the error by calling the function in Epson's shipped Linux
+library. For the [regression test](io_mode_contract_test.cpp), I compiled the
+function from the original and patched source. The test makes five calls,
+including a blocking request after a rejected nonblocking request. The
+original function failed all three blocking requests. The patched function
+passed all five cases. These were isolated function tests. A full driver build
+and scanner test are pending.
+
+## Verify
+
+Extract `epsonscan2-6.7.80.0-1.src.tar.gz`, or use the
+[source mirror at the tested revision](https://github.com/mfeldheim/epsonscan2/tree/301c366f73a4bd648c07cce9c8730ee92f2bef92).
+Run this from the repo root with Python 3, Git, `g++`, and the SANE development
+headers installed.
 
 ```sh
 python3 blocking-mode/verify.py /path/to/epsonscan2-6.7.80.0-1
 ```
 
-The script verifies `backend.cpp` against the reviewed source hash, then
-compiles the original and patched function in a temporary directory with a
-test handle. This checks the return values in isolation. Full-driver and
-hardware tests are pending.
+[`verify.py`](verify.py) checks the hash of `backend.cpp`, applies the patch
+in a temporary directory, and compiles and runs both versions of the function.
 
 The blocking I/O patch and test code are under [LGPL-2.1-or-later](../COPYING).
